@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Hexágono e Linha - Mesmo Movimento Sincronizado</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background-color: #000000;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', 'Courier New', monospace;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .container {
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .gangorra-area {
+            position: relative;
+            width: 70%;
+            max-width: 700px;
+            height: 350px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Grupo que vai girar junto (linha + hexágono) */
+        .grupo-gangorra {
+            position: absolute;
+            left: 50%;
+            bottom: 100px;
+            width: 100%;
+            transform-origin: center center;
+            transform: translateX(-50%) rotate(0deg);
+            transition: transform 0.05s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Linha que balança como gangorra */
+        .linha-gangorra {
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, #ffffff, #e0e0e0, #ffffff);
+            border-radius: 2px;
+            box-shadow: 0 0 12px rgba(255,255,255,0.6);
+        }
+
+        /* Hexágono em CONTATO com a linha */
+        .hexagono {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            left: 0;
+            bottom: 4px;
+            transform: translateX(0) translateY(0);
+            pointer-events: none;
+            z-index: 3;
+            filter: drop-shadow(0 0 8px rgba(255,255,255,0.5));
+        }
+
+        /* Desenho do hexágono com rotação contínua */
+        .hexagono-interno {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #ffffff, #d0d0d0);
+            clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 0 15px rgba(255,255,255,0.4);
+            animation: girarHexagono 2s linear infinite;
+        }
+
+        /* Animação de rotação do hexágono */
+        @keyframes girarHexagono {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Brilho interno do hexágono */
+        .brilho-hexagono {
+            width: 18px;
+            height: 18px;
+            background: radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%;
+            animation: pulsarBrilho 1s infinite ease-in-out;
+        }
+
+        @keyframes pulsarBrilho {
+            0%, 100% { opacity: 0.5; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+
+        /* Efeito de brilho nas bordas */
+        @keyframes brilhoBorda {
+            0%, 100% { filter: drop-shadow(0 0 5px rgba(255,255,255,0.3)); }
+            50% { filter: drop-shadow(0 0 15px rgba(255,255,255,0.8)); }
+        }
+
+        .hexagono {
+            animation: brilhoBorda 2s infinite ease-in-out;
+        }
+
+        /* Efeito de impacto quando toca na borda */
+        @keyframes impactoBorda {
+            0% { filter: drop-shadow(0 0 5px rgba(255,255,255,0.3)); }
+            50% { filter: drop-shadow(0 0 25px rgba(255,255,255,1)); }
+            100% { filter: drop-shadow(0 0 8px rgba(255,255,255,0.5)); }
+        }
+
+        .impacto {
+            animation: impactoBorda 0.3s ease-out;
+        }
+
+        .info {
+            position: fixed;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            color: #555;
+            font-size: 11px;
+            font-family: monospace;
+            letter-spacing: 1px;
+            z-index: 10;
+        }
+
+        @media (max-width: 768px) {
+            .gangorra-area { width: 80%; max-width: 500px; height: 300px; }
+            .hexagono { width: 32px; height: 32px; }
+            .linha-gangorra { height: 3px; }
+            .brilho-hexagono { width: 12px; height: 12px; }
+            .grupo-gangorra { bottom: 80px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="gangorra-area">
+            <!-- Grupo que contém linha + hexágono (giram juntos) -->
+            <div class="grupo-gangorra" id="grupoGangorra">
+                <!-- Linha -->
+                <div class="linha-gangorra" id="linhaGangorra"></div>
+                
+                <!-- Hexágono giratório em contato com a linha -->
+                <div class="hexagono" id="hexagono">
+                    <div class="hexagono-interno" id="hexagonoGiratorio">
+                        <div class="brilho-hexagono"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="info">
+            ⬡ HEXÁGONO SINCRONIZADO | ⚫ LINHA INCLINA NAS EXTREMIDADES | 🔄 MESMA VELOCIDADE
+        </div>
+    </div>
+
+    <script>
+        const grupoGangorra = document.getElementById('grupoGangorra');
+        const hexagono = document.getElementById('hexagono');
+        
+        // Posição horizontal do hexágono (0 = esquerda, 1 = direita)
+        let posicaoHorizontal = 0.5;
+        let velocidadeMovimento = 0.008; // Velocidade do hexágono
+        
+        // Ângulo da gangorra (LINHA segue o hexágono)
+        let anguloAtual = 0;
+        let anguloMaximo = 18;
+        
+        // Direções
+        let direcaoHexagono = 1;
+        let direcaoAngulo = 1;
+        
+        // Flag para controlar inversão
+        let invertendo = false;
+        
+        let larguraGrupo = grupoGangorra.clientWidth;
+        let larguraHexagono = hexagono.offsetWidth;
+        let espacoMaximo = 0;
+        
+        // Limites do hexágono
+        let limiteEsquerda = 0.05;
+        let limiteDireita = 0.95;
+        
+        function atualizarDimensoes() {
+            larguraGrupo = grupoGangorra.clientWidth;
+            larguraHexagono = hexagono.offsetWidth;
+            espacoMaximo = larguraGrupo - larguraHexagono;
+            if (espacoMaximo < 0) espacoMaximo = 0;
+            posicaoHorizontal = Math.max(limiteEsquerda, Math.min(limiteDireita, posicaoHorizontal));
+        }
+        
+        function atualizarPosicaoHexagono() {
+            if (espacoMaximo <= 0) return;
+            
+            // Posição X do hexágono
+            const xPos = posicaoHorizontal * espacoMaximo;
+            const xPosFinal = Math.max(0, Math.min(espacoMaximo, xPos));
+            hexagono.style.left = xPosFinal + 'px';
+            hexagono.style.bottom = '4px';
+        }
+        
+        // Função para aplicar impacto visual na borda
+        function aplicarImpacto() {
+            hexagono.classList.add('impacto');
+            setTimeout(() => {
+                hexagono.classList.remove('impacto');
+            }, 300);
+        }
+        
+        // Função para inverter a direção da gangorra baseado na posição do hexágono
+        function atualizarInclinacaoLinha() {
+            // O ângulo da linha é diretamente baseado na posição do hexágono
+            // Quando o hexágono está na extremidade direita, linha inclina para direita
+            // Quando está na extremidade esquerda, linha inclina para esquerda
+            
+            // Mapeia a posição do hexágono (0 a 1) para o ângulo (-max a +max)
+            // Centro (0.5) = ângulo 0
+            // Esquerda (0) = ângulo -max
+            // Direita (1) = ângulo +max
+            const anguloAlvo = (posicaoHorizontal - 0.5) * 2 * anguloMaximo;
+            
+            // Suaviza a transição do ângulo
+            anguloAtual = anguloAlvo;
+            
+            // Aplica a rotação ao grupo
+            grupoGangorra.style.transform = `translateX(-50%) rotate(${anguloAtual}deg)`;
+        }
+        
+        function animar() {
+            // Movimento horizontal do hexágono
+            posicaoHorizontal += velocidadeMovimento * direcaoHexagono;
+            
+            // Verifica se tocou nas extremidades
+            let tocouBorda = false;
+            
+            if (posicaoHorizontal >= limiteDireita) {
+                posicaoHorizontal = limiteDireita;
+                direcaoHexagono = -1;
+                tocouBorda = true;
+                aplicarImpacto();
+            } else if (posicaoHorizontal <= limiteEsquerda) {
+                posicaoHorizontal = limiteEsquerda;
+                direcaoHexagono = 1;
+                tocouBorda = true;
+                aplicarImpacto();
+            }
+            
+            // A LINHA acompanha o hexágono em tempo real (mesma velocidade)
+            atualizarInclinacaoLinha();
+            
+            // Atualiza posição do hexágono
+            atualizarPosicaoHexagono();
+            
+            requestAnimationFrame(animar);
+        }
+        
+        window.addEventListener('resize', () => {
+            atualizarDimensoes();
+            atualizarPosicaoHexagono();
+            atualizarInclinacaoLinha();
+        });
+        
+        function init() {
+            atualizarDimensoes();
+            posicaoHorizontal = 0.5;
+            direcaoHexagono = 1;
+            anguloAtual = 0;
+            grupoGangorra.style.transform = `translateX(-50%) rotate(0deg)`;
+            atualizarPosicaoHexagono();
+            animar();
+        }
+        
+        init();
+        
+        console.log('⬡ Hexágono e linha com MOVIMENTO SINCRONIZADO!');
+        console.log('📐 Linha inclina exatamente quando hexágono toca as bordas');
+        console.log('⚡ Mesma velocidade de movimento');
+    </script>
+</body>
+</html>
